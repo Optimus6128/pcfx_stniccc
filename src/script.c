@@ -1,3 +1,5 @@
+#include <eris/tetsu.h>
+
 #include "script.h"
 #include "scene1.h"
 #include "main.h"
@@ -21,10 +23,7 @@ static uint32 block64index = 0;
 
 static uchar *data = &scene1_bin[0];
 
-static ushort pal16[ATARI_PAL_NUM];
 static MyPoint2D pt[MAX_POLYGON_PTS];
-
-static ushort texPals[ATARI_PAL_NUM][32];
 
 static QuadStore quads[MAX_POLYS];
 static QuadStore *quadPtr;
@@ -132,7 +131,7 @@ void drawFlatQuad8(MyPoint2D *p, uchar color, uchar *screen)
 
 			do {
 				*dst8++ = color;
-			}while(--length > 0);
+			}while(--length >= 0);
 			
 			dst += ANIM_WIDTH;
 		} while(--count > 0);
@@ -184,17 +183,16 @@ static void renderPolygonsSoftware8()
 	}
 }
 
+
 static void interpretPaletteData()
 {
     int i, r, g, b;
     uchar bitmaskH = *data++;
 	uchar bitmaskL = *data++;
-	ushort c;
 
 	int bitmask = (bitmaskH << 8) | bitmaskL;
 
 	for (i = 0; i < 16; ++i) {
-		int palNum = i;
 		if (bitmask & 0x8000) {
 			uchar colorH = *data++;
 			uchar colorL = *data++;
@@ -204,9 +202,7 @@ static void interpretPaletteData()
 			g = (color >> 4) & 7;
 			b = color & 7;
 
-			c = (r << 12) | (g << 7) | (b << 2);
-
-			pal16[palNum] = c;
+			eris_tetsu_set_palette(i, RGB2YUV(r<<5, g<<5, b<<5));
 		}
 		bitmask <<= 1;
 	}
@@ -362,6 +358,18 @@ void drawTimer()
     }
 }*/
 
+static void clearScreen()
+{
+	int i;
+	uint16 c = RGB2YUV(0,0,0);
+	uint32 cc = (c<<16) | c;
+
+	uint32 *dst32 = (uint32*)animBufferPtr;
+	for (i=0; i<ANIM_SIZE/4; ++i) {
+		*dst32++ = cc;
+	}
+}
+
 void runAnimationScript()
 {
 	/*if (firstTime) {
@@ -374,11 +382,7 @@ void runAnimationScript()
 	decodeFrame();
 
 	if (mustClearScreen) {
-		int i;
-		uint32 *dst32 = (uint32*)animBufferPtr;
-		for (i=0; i<ANIM_SIZE/4; ++i) {
-			*dst32++ = 0;
-		}
+		clearScreen();
 	}
 
 	renderPolygonsSoftware8();
