@@ -3,6 +3,10 @@
 
 #include "types.h"
 
+#define ANIM_WIDTH 256
+#define ANIM_HEIGHT 200
+#define ANIM_SIZE (ANIM_WIDTH * ANIM_HEIGHT)
+
 
 typedef struct MyPoint2D
 {

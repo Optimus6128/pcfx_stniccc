@@ -6,9 +6,6 @@
 
 
 #define MAX_POLYS 256
-#define ANIM_WIDTH 256
-#define ANIM_HEIGHT 200
-#define ANIM_SIZE (ANIM_WIDTH * ANIM_HEIGHT)
 
 #define DIV_TAB_SIZE 4096
 #define DIV_TAB_SHIFT 16
@@ -122,18 +119,32 @@ void drawFlatQuad8(MyPoint2D *p, uchar color, uchar *screen)
 
 	{
 		int y = yMin;
-		uchar *dst = screen + (y << 8);
+		uchar *dst = screen + y * SCREEN_WIDTH_IN_BYTES;
+		uchar col8 = (color << 4) | color;
+
 		int count = yMax - yMin;
 		do {
 			const int xl = leftEdgeFlat[y];
-			int length = rightEdgeFlat[y++]-xl;
-			uchar *dst8 = dst + xl;
+			int length = rightEdgeFlat[y++]-xl+1;
+			uchar *dst8 = dst + (xl>>1);
 
-			do {
-				*dst8++ = color;
-			}while(--length >= 0);
-			
-			dst += ANIM_WIDTH;
+			if (xl & 1) {
+				*dst8 = (*dst8 & 0xF0) | color;
+				++dst8;
+				--length;
+			}
+			if (length & 1) {
+				uchar *dst8r = dst8 + (length >> 1);
+				*dst8r = (*dst8r & 0x0F) | (color << 4);
+				--length;
+			}
+
+			length >>= 1;
+			while(length-- > 0) {
+				*dst8++ = col8;
+			};
+
+			dst += SCREEN_WIDTH_IN_BYTES;
 		} while(--count > 0);
 	}
 }
@@ -361,12 +372,10 @@ void drawTimer()
 static void clearScreen()
 {
 	int i;
-	uint16 c = RGB2YUV(0,0,0);
-	uint32 cc = (c<<16) | c;
 
 	uint32 *dst32 = (uint32*)animBufferPtr;
-	for (i=0; i<ANIM_SIZE/4; ++i) {
-		*dst32++ = cc;
+	for (i=0; i<SCREEN_SIZE_IN_BYTES/4; ++i) {
+		*dst32++ = 0;
 	}
 }
 
@@ -377,7 +386,7 @@ void runAnimationScript()
 		firstTime = false;
 	}*/
 	
-	animBufferPtr = framebuffer + SCREEN_WIDTH * ((SCREEN_HEIGHT - ANIM_HEIGHT) / 3);
+	animBufferPtr = framebuffer;
 
 	decodeFrame();
 

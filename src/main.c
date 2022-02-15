@@ -14,9 +14,7 @@
 #include "tinyfont.h"
 
 
-unsigned char framebuffer[SCREEN_SIZE_IN_PIXELS];
-
-static unsigned short myPal[256];
+unsigned char framebuffer[SCREEN_SIZE_IN_BYTES];
 
 
 /*
@@ -72,27 +70,6 @@ uint16 RGB2YUV(int r, int g, int b)
 	return yuv;
 }
 
-static void initPal()
-{
-	int i;
-	/*for (i=0; i<64; ++i) {
-		myPal[i] = (i<<10) | (i<<0);
-	}
-	for (i=64; i<128; ++i) {
-		myPal[i] = (255<<8) | (255 + 64 - i);
-	}
-	for (i=128; i<192; ++i) {
-		myPal[i] = (255<<8) | (192 - 2*(i - 128));
-	}
-	for (i=192; i<256; ++i) {
-		myPal[i] = ((255 - i)<<10) | ((255 - i)<<0);
-	}*/
-	
-	for (i=0; i<256; ++i) {
-		myPal[i] = RGB2YUV(0,0,0);
-	}
-}
-
 static void initDisplay()
 {
 	int i;
@@ -106,7 +83,7 @@ static void initDisplay()
 	eris_tetsu_set_rainbow_palette(0);
 
 	eris_king_set_bg_prio(KING_BGPRIO_0, KING_BGPRIO_HIDE, KING_BGPRIO_HIDE, KING_BGPRIO_HIDE, 0);
-	eris_king_set_bg_mode(KING_BGMODE_256_PAL, KING_BGPRIO_HIDE, KING_BGPRIO_HIDE, KING_BGPRIO_HIDE);
+	eris_king_set_bg_mode(KING_BGMODE_16_PAL, KING_BGPRIO_HIDE, KING_BGPRIO_HIDE, KING_BGPRIO_HIDE);
 
 	eris_king_set_kram_pages(0, 0, 0, 0);
 
@@ -116,16 +93,16 @@ static void initDisplay()
 
 	microprog[0] = KING_CODE_BG0_CG_0;
 	microprog[1] = KING_CODE_BG0_CG_1;
-	microprog[2] = KING_CODE_BG0_CG_2;
-	microprog[3] = KING_CODE_BG0_CG_3;
+	//microprog[2] = KING_CODE_BG0_CG_2;
+	//microprog[3] = KING_CODE_BG0_CG_3;
 
 	eris_king_disable_microprogram();
 	eris_king_write_microprogram(microprog, 0, 16);
 	eris_king_enable_microprogram();
 
 	eris_tetsu_set_rainbow_palette(0);
-	for(i = 0; i < 256; i++) {
-		eris_tetsu_set_palette(i, myPal[i]);
+	for(i = 0; i < 16; i++) {
+		eris_tetsu_set_palette(i, RGB2YUV(0,0,0));
 	}
 
 	eris_tetsu_set_video_mode(TETSU_LINES_262, 0, TETSU_DOTCLOCK_5MHz, TETSU_COLORS_16, TETSU_COLORS_16, 0, 0, 1, 0, 0, 0, 0);
@@ -147,35 +124,18 @@ static void initDisplay()
 void bufDisplay()
 {
 	int i;
-	//unsigned int *dst = (unsigned int*)framebuffer;
 
-	eris_king_set_kram_read(0, 1);
-	eris_king_set_kram_write(0, 1);
+	eris_king_set_kram_write((SCREEN_WIDTH_IN_BYTES/2) * ((236-ANIM_HEIGHT)/2), 1);	//4 to 235
 
-	for(i = 0; i < SCREEN_SIZE_IN_PIXELS; i+=2) {
-		eris_king_kram_write(framebuffer[i] << 8 | framebuffer[i+1]);
+	for(i = 0; i < ANIM_SIZE; i+=2) {
+		eris_king_kram_write((framebuffer[i] << 8) | (framebuffer[i+1]));
 	}
 
 	eris_king_set_kram_write(0, 1);
 }
 
-/*static void testDisplay(int t)
-{
-	int i;
-
-	int ii = t;
-	for(i = 0; i < SCREEN_SIZE_IN_PIXELS; ++i) {
-		framebuffer[i] = ii++;
-	}
-
-	bufDisplay();
-}*/
-
 int main()
 {
-	static int t = 0;
-
-	initPal();
 	initDisplay();
 
 	initTinyFonts();
@@ -188,8 +148,6 @@ int main()
 		runAnimationScript();
 		
 		bufDisplay();
-
-		//drawNumber(16,216, t++);
 	}
 
 	return 0;
