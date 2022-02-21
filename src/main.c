@@ -16,39 +16,73 @@
 
 unsigned char framebuffer[SCREEN_SIZE_IN_BYTES];
 
+static int nframe = 0;
 
-/*
-static int ticks = 0;
-static int prevT = 0;
+
+volatile int __attribute__ ((zda)) zda_timer_count = 0;
+
+/* Declare this "noinline" to ensure that my_timer_irq() is not a leaf. */
+__attribute__ ((noinline)) void increment_zda_timer_count (void)
+{
+	zda_timer_count++;
+}
+
+/* Simple test interrupt_handler that is not a leaf. */
+/* Because it is not a leaf function, it will use the full IRQ preamble. */
+__attribute__ ((interrupt)) void my_timer_irq (void)
+{
+	eris_timer_ack_irq();
+
+	increment_zda_timer_count();
+}
 
 static void initTimer()
 {
+	// The PC-FX firmware leaves a lot of hardware actively generating
+	// IRQs when a program starts, and it is only because the V810 has
+	// interrupts-disabled that the firmware IRQ handlers are not run.
+	//
+	// You *must* mask/disable/reset the existing IRQ sources and init
+	// new handlers before enabling the V810's interrupts!
+
+	// Disable all interrupts before changing handlers.
+	irq_set_mask(0x7F);
+
+	// Replace firmware IRQ handlers for the Timer and HuC6270-A.
+	//
+	// This liberis function uses the V810's hardware IRQ numbering,
+	// see FXGA_GA and FXGABOAD documents for more info ...
+	irq_set_raw_handler(0x9, my_timer_irq);
+
+	// Enable Timer interrupt.
+	//
+	// d6=Timer
+	// d5=External
+	// d4=KeyPad
+	// d3=HuC6270-A
+	// d2=HuC6272
+	// d1=HuC6270-B
+	// d0=HuC6273
+	irq_set_mask(0x3F);
+
+	// Reset and start the Timer.
 	eris_timer_init();
-	eris_timer_set_period(65535);
-	eris_timer_start(0);
-}
+	eris_timer_set_period(1432); /* approx 1/1000th of a second */
+	eris_timer_start(1);
 
-static void updateLameTimer()
-{
-	int t = eris_timer_read_counter();
-	if (t > prevT) ticks++;
-	prevT = t;
-}
+	// Hmmm ... this needs to be cleared here for some reason ... there's
+	// probably a bug to find somewhere!
+	zda_timer_count = 0;
 
-static void updateLameTimerSum()
-{
-	int t = eris_timer_read_counter();
-	int dt = prevT - t;
-	if (dt < 0) dt = 0;
-	ticks += dt;
-	prevT = t;
-}
+	// Allow all IRQs.
+	//
+	// This liberis function uses the V810's hardware IRQ numbering,
+	// see FXGA_GA and FXGABOAD documents for more info ...
+	irq_set_level(8);
 
-static void vsync()
-{
-	while(eris_tetsu_get_raster() !=200) {};
+	// Enable V810 CPU's interrupt handling.
+	irq_enable();
 }
-*/
 
 uint16 RGB2YUV(int r, int g, int b)
 {
@@ -93,8 +127,6 @@ static void initDisplay()
 
 	microprog[0] = KING_CODE_BG0_CG_0;
 	microprog[1] = KING_CODE_BG0_CG_1;
-	//microprog[2] = KING_CODE_BG0_CG_2;
-	//microprog[3] = KING_CODE_BG0_CG_3;
 
 	eris_king_disable_microprogram();
 	eris_king_write_microprogram(microprog, 0, 16);
@@ -121,33 +153,58 @@ static void initDisplay()
 	eris_king_set_kram_write(0, 1);
 }
 
-void bufDisplay()
+void bufDisplay32()
 {
 	int i;
+	uint32 *fb32 = (uint32*)framebuffer;
 
 	eris_king_set_kram_write((SCREEN_WIDTH_IN_BYTES/2) * ((236-ANIM_HEIGHT)/2), 1);	//4 to 235
 
-	for(i = 0; i < ANIM_SIZE; i+=2) {
-		eris_king_kram_write((framebuffer[i] << 8) | (framebuffer[i+1]));
+	for(i = 0; i < ANIM_SIZE/2; i+=4) {
+		const uint32 c = *fb32++;
+		eris_king_kram_write(((c>>8) & 0x00FF) | ((c << 8) & 0xFF00));
+		eris_king_kram_write((c>>24) | ((c>>8) & 0xFF00));
 	}
 
 	eris_king_set_kram_write(0, 1);
 }
 
+static int getFps()
+{
+	static int fps = 0;
+	static int prev_sec = 0;
+	static int prev_nframe = 0;
+
+	const int curr_sec = zda_timer_count / 1000;
+	if (curr_sec != prev_sec) {
+		fps = nframe - prev_nframe;
+		prev_sec = curr_sec;
+		prev_nframe = nframe;
+	}
+	return fps;
+}
+
+int getTicks()
+{
+	return zda_timer_count;
+}
+
 int main()
 {
 	initDisplay();
+	initTimer();
 
 	initTinyFonts();
-
-	//initTimer();
-	
 	initDivs();
-	
+
 	for(;;) {
 		runAnimationScript();
-		
-		bufDisplay();
+
+		bufDisplay32();
+
+		drawNumber(4,8, getFps());
+
+		++nframe;
 	}
 
 	return 0;

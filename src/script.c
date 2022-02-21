@@ -1,8 +1,12 @@
 #include <eris/tetsu.h>
 
+#include <stdio.h>
+#include <string.h>
+
 #include "script.h"
 #include "scene1.h"
 #include "main.h"
+#include "tinyfont.h"
 
 
 #define MAX_POLYS 256
@@ -33,17 +37,13 @@ static MyPoint2D vi[256];
 
 static bool mustClearScreen = false;
 
-//static bool firstTime = true;
+static bool firstTime = true;
 static bool endOfBench = false;
 
 static uint8 *animBufferPtr;
 
-/*static char stbuffer[10];
-static char avgfpsbuffer[16];
-static char texnumbuffer[8];
-
 static int startBenchTime;
-static int frameNum = 0;*/
+static int frameNum = 0;
 
 
 void initDivs()
@@ -143,6 +143,15 @@ void drawFlatQuad8(MyPoint2D *p, uchar color, uchar *screen)
 			while(length-- > 0) {
 				*dst8++ = col8;
 			};
+
+			/*
+			if (length < 8) {
+				while(length-- > 0) {
+					*dst8++ = col8;
+				};
+			} else {
+				memset(dst8, col8, length);
+			}*/
 
 			dst += SCREEN_WIDTH_IN_BYTES;
 		} while(--count > 0);
@@ -328,46 +337,41 @@ static void decodeFrame()
 	}
 }
 
-/*void hackNumToTwoDigitChars(char *buff, int num)    // no time to think of a better way
+void drawTwoDigitNumber(int posX, int posY, int num)
 {
-    if (num < 10) {
-        buff[0] = '0';
-        buff[1] = 48 + num;
-    } else {
-        sprintf(buff, "%d", num);
-    }
+	if (num < 10) {
+		drawNumber(posX, posY, 0); posX += 4;
+		drawNumber(posX, posY, num);
+	} else {
+		drawNumber(posX, posY, num);
+	}
 }
 
 void drawTimer()
 {
-    static int min, sec, mls, avgfps;
+    static int min, sec, mls, avgfps = -1;
     int elapsed = getTicks() - startBenchTime;
+	const int timeY = 222;
+	int timeX = 114;
 
     if (endOfBench) {
-        int c = elapsed >> 5;
-        setFontColor(MakeRGB15(c, c, c));
+        if (avgfps < 0) avgfps = (frameNum * 1000) / elapsed;
     } else {
         min = elapsed / 60000;
         sec = (elapsed / 1000) % 60;
         mls = (elapsed % 1000) / 10;
-        avgfps = (frameNum * 1000) / elapsed;
     }
 
-    hackNumToTwoDigitChars(&stbuffer[0], min);
-    stbuffer[2] = ':';
-    hackNumToTwoDigitChars(&stbuffer[3], sec);
-    stbuffer[5] = ':';
-    hackNumToTwoDigitChars(&stbuffer[6], mls);
-
-    drawText(128, 216, stbuffer);
+	drawTwoDigitNumber(timeX, timeY, min);	timeX += 8;
+	drawFont(timeX, timeY, 10);				timeX += 4;
+	drawTwoDigitNumber(timeX, timeY, sec);	timeX += 8;
+	drawFont(timeX, timeY, 10);				timeX += 4;
+	drawTwoDigitNumber(timeX, timeY, mls);
 
     if (endOfBench) {
-        setFontColor(MakeRGB15(31, 24, 16));
-        sprintf(avgfpsbuffer, "Avg FPS:%d", avgfps);
-        drawText(204, 216, avgfpsbuffer);
-        setFontColor(MakeRGB15(31, 31, 31));
+		drawNumber(232, 8, avgfps);
     }
-}*/
+}
 
 static void clearScreen()
 {
@@ -381,10 +385,10 @@ static void clearScreen()
 
 void runAnimationScript()
 {
-	/*if (firstTime) {
+	if (firstTime) {
 		startBenchTime = getTicks();
 		firstTime = false;
-	}*/
+	}
 	
 	animBufferPtr = framebuffer;
 
@@ -396,7 +400,7 @@ void runAnimationScript()
 
 	renderPolygonsSoftware8();
 
-	//drawTimer();
+	drawTimer();
 
-	//++frameNum;
+	++frameNum;
 }
