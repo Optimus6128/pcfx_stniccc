@@ -12,6 +12,7 @@
 #include "main.h"
 #include "script.h"
 #include "tinyfont.h"
+#include "fastking.h"
 
 
 unsigned char framebuffer[SCREEN_SIZE_IN_BYTES];
@@ -155,16 +156,9 @@ static void initDisplay()
 
 void bufDisplay32()
 {
-	int i;
-	uint32 *fb32 = (uint32*)framebuffer;
-
 	eris_king_set_kram_write((SCREEN_WIDTH_IN_BYTES/2) * ((236-ANIM_HEIGHT)/2), 1);	//4 to 235
 
-	for(i = 0; i < ANIM_SIZE/2; i+=4) {
-		const uint32 c = *fb32++;
-		eris_king_kram_write(((c>>8) & 0x00FF) | ((c << 8) & 0xFF00));
-		eris_king_kram_write((c>>24) | ((c>>8) & 0xFF00));
-	}
+	king_kram_write_buffer_bytes(framebuffer, ANIM_SIZE/2);
 
 	eris_king_set_kram_write(0, 1);
 }
