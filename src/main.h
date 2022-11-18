@@ -14,6 +14,10 @@ extern unsigned char framebuffer[SCREEN_SIZE_IN_BYTES];
 
 extern uint16 RGB2YUV(int r, int g, int b);
 
+uint32 cd_playtrk(uint8 start, uint8 mode);
+
+uint32 cd_endtrk(uint8 end, uint8 mode);
+
 int getTicks();
 
 #endif

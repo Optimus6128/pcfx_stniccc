@@ -6,6 +6,7 @@
 #include <eris/cd.h>
 #include <eris/low/pad.h>
 #include <eris/low/scsi.h>
+#include <eris/low/soundbox.h>
 
 #include <math.h>
 
@@ -154,6 +155,13 @@ static void initDisplay()
 	eris_king_set_kram_write(0, 1);
 }
 
+static void initCDplay()
+{
+	eris_low_cdda_set_volume(63,63);
+	cd_playtrk(2, 0);
+	cd_endtrk(3, 0x4);
+}
+
 void bufDisplay32()
 {
 	eris_king_set_kram_write((SCREEN_WIDTH_IN_BYTES/2) * ((236-ANIM_HEIGHT)/2), 1);	//4 to 235
@@ -191,12 +199,14 @@ int main()
 	initTinyFonts();
 	initDivs();
 
+	initCDplay();
+
 	for(;;) {
 		runAnimationScript();
 
 		bufDisplay32();
 
-		drawNumber(4,8, getFps());
+		drawNumber(8,16, getFps());
 
 		++nframe;
 	}

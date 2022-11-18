@@ -6,8 +6,8 @@ AR             = $(PREFIX)-ar
 LD             = $(PREFIX)-ld
 OBJCOPY        = $(PREFIX)-objcopy
 
-CFLAGS        += -I$(V810GCC)/include/ -I$(V810GCC)/$(PREFIX)/include/ -O3 -Wall -std=gnu99 -mv810 -msda=256 -mprolog-function
-CPFLAGS       += -I$(V810GCC)/include/ -I$(V810GCC)/$(PREFIX)/include/ -O3 -Wall -std=gnu++11 -fno-rtti -fno-exceptions -mv810 -msda=256 -mprolog-function 
+CFLAGS        += -I$(V810GCC)/include/ -I$(V810GCC)/$(PREFIX)/include/ -O3 -fomit-frame-pointer -Wall -std=gnu99 -mv810 -msda=256 -mprolog-function
+CPFLAGS       += -I$(V810GCC)/include/ -I$(V810GCC)/$(PREFIX)/include/ -O3 -fomit-frame-pointer -Wall -std=gnu++11 -fno-rtti -fno-exceptions -mv810 -msda=256 -mprolog-function 
 LDFLAGS       += -L$(V810GCC)/lib/ -L$(V810GCC)/$(PREFIX)/lib/ -L$(V810GCC)/lib/gcc/$(PREFIX)/4.7.4/ $(V810GCC)/$(PREFIX)/lib/crt0.o
 
 LIBS           = -leris -lc -lsim -lgcc
