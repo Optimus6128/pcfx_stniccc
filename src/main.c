@@ -206,7 +206,7 @@ int main()
 
 		bufDisplay32();
 
-		drawNumber(8,16, getFps());
+		drawNumber(8,8, getFps());
 
 		++nframe;
 	}
